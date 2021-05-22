@@ -10,7 +10,6 @@
 		2E14C612263252B1000AEAD6 /* Hexasphere in Frameworks */ = {isa = PBXBuildFile; productRef = 2E14C611263252B1000AEAD6 /* Hexasphere */; };
 		2E35115E26570B5200E56590 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E35115726570B5200E56590 /* ContentView.swift */; };
 		2E35116026570B5200E56590 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2E35115A26570B5200E56590 /* Assets.xcassets */; };
-		2E35116126570B5200E56590 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2E35115C26570B5200E56590 /* Info.plist */; };
 		2E35116226570B5200E56590 /* HexaGlobeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E35115D26570B5200E56590 /* HexaGlobeApp.swift */; };
 		2E3511682658378300E56590 /* equirectangle_projection.png in Resources */ = {isa = PBXBuildFile; fileRef = 2E3511672658378300E56590 /* equirectangle_projection.png */; };
 /* End PBXBuildFile section */
@@ -118,6 +117,8 @@
 				Base,
 			);
 			mainGroup = D0D1A6111ECC653200171E3B;
+			packageReferences = (
+			);
 			productRefGroup = D0D1A61B1ECC653200171E3B /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -134,7 +135,6 @@
 			files = (
 				2E3511682658378300E56590 /* equirectangle_projection.png in Resources */,
 				2E35116026570B5200E56590 /* Assets.xcassets in Resources */,
-				2E35116126570B5200E56590 /* Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

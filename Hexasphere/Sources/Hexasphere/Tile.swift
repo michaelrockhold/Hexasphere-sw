@@ -10,6 +10,7 @@ import Algorithms
 import Numerics
 import GLKit // for GLKVector3 and its operators
 import MapKit // for CLLocationCoordinate2D
+import KDTree
 
 extension GLKVector3 {
     static func fromVector(_ v: Vector) -> GLKVector3 {
@@ -26,6 +27,7 @@ func normal_(_ v1: Vector, _ v2: Vector, _ v3: Vector) -> GLKVector3 {
 }
 
 struct _Tile {
+
     let centre: Vector
     var boundaries: [Vector]
     let coordinate: CLLocationCoordinate2D
@@ -65,24 +67,46 @@ struct _Tile {
         return CLLocationCoordinate2D(latitude: 180.0 * phi / .pi - 90,
                                       longitude: 180.0 * theta / .pi)
     }
+}
+
+public struct IndexedTile {
+    let idx: Int
+    let baseTile: _Tile
     
-    func findNeighborsIndices(population: [_Tile]) -> [Tile.TileIndex] {
-                
-        // We scan the provided array of tiles to find the 5 or 6 closest to outself.
-        // We assume that self is in the list, and therefore will be the first closest,
-        // and easy to ignore.
-                
-        // TODO: opportunities for parallelization here?
-        return population.enumerated().map { otherTileTuple in
-            
-            return (idx: otherTileTuple.offset,
-                    distanceToReferenceTile: otherTileTuple.element.centre.distance(to: self.centre))
-            
-        }.sorted { a, b in
-            a.distanceToReferenceTile < b.distanceToReferenceTile
-            
-        }[1...self.boundaries.count]
-        .map { $0.idx }
+    func findNeighborsIndices(population: KDTree<IndexedTile>) -> [Tile.TileIndex] {
+        
+        return population.nearestK(self.baseTile.boundaries.count+1, to: self).map {
+            return $0.idx
+        }[1...]
+        .map { $0 }
+    }
+}
+
+extension IndexedTile : KDTreePoint {
+    
+    public static var dimensions: Int {
+        return 3
+    }
+    
+    public func kdDimension(_ dimension: Int) -> Double {
+        switch dimension {
+        case 0:
+            return baseTile.centre.x
+        case 1:
+            return baseTile.centre.y
+        case 2:
+            return baseTile.centre.z
+        default:
+            fatalError()
+        }
+    }
+    
+    public func squaredDistance(to otherPoint: IndexedTile) -> Double {
+        return baseTile.centre.squaredDistance(to: otherPoint.baseTile.centre)
+    }
+    
+    public static func == (lhs: IndexedTile, rhs: IndexedTile) -> Bool {
+        return lhs.idx == rhs.idx
     }
 }
 

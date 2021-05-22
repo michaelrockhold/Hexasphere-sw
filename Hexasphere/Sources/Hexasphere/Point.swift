@@ -25,6 +25,10 @@ public struct Vector {
         return Vector(x: b.x-x, y: b.y-y, z: b.z-z).hypotenuse()
     }
     
+    func squaredDistance(to b: Vector) -> Double {
+        return pow(b.x-x, 2) + pow(b.y-y, 2) + pow(b.z-z, 2)
+    }
+    
     func project(toRadius radius: Double, withPercentage percent: Double) -> Vector {
         let percent: Double = .maximum(0.0, .minimum(1.0, percent))
         let ratio = radius / hypotenuse()

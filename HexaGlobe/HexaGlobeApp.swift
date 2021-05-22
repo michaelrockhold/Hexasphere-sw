@@ -57,10 +57,12 @@ func updateFromGeo(earth: Hexasphere, node: Hexasphere.Node, geoData: GeoData) {
     }
     // Right, and just to show that the tiles know their neighbors (That's cool, right?),
     // let's get out the highlighter and colour some more tiles.
-    let tile3 = earth.tiles[3]
-    node.updateTileTexture(forTileAt: 3, with: .red)
-    for tIdx in tile3.neighbors {
-        node.updateTileTexture(forTileAt: tIdx, with: .purple)
+    for tileIdx in 0..<12 {
+        let t = earth.tiles[tileIdx]
+        node.updateTileTexture(forTileAt: tileIdx, with: .red)
+        for nIdx in t.neighbors {
+            node.updateTileTexture(forTileAt: nIdx, with: .purple)
+        }
     }
 }
 
@@ -89,7 +91,7 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
             let node: Hexasphere.Node
             do {
                 let earth = try Hexasphere(radius: HexaGlobeApp.GLOBE_RADIUS,
-                                           numDivisions: 72,
+                                           numDivisions: 32,
                                            hexSize: 0.99) { [weak self] msg in
                     
                     // Update the status window with informative messages as the globe creation process proceeds.

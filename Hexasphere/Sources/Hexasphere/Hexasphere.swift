@@ -1,5 +1,6 @@
 import Foundation
 import MapKit
+import KDTree
 
 public protocol GeoData {
     func isLand(at: CLLocationCoordinate2D) -> Bool
@@ -204,8 +205,10 @@ public class Hexasphere {
         tileCount = population.count
         // This is as good a time as any to find each tile's immediate neighbors
         status("Calculating neighborhoods for all \(tileCount) tiles")
-        return population.map {
-            return Tile(baseTile: $0, neighbors: $0.findNeighborsIndices(population: population))
+        let allTiles = population.enumerated().map { IndexedTile(idx: $0.offset, baseTile: $0.element)}
+        let allTilesTree = KDTree(values: allTiles)
+        return allTiles.map {
+            return Tile(baseTile: $0.baseTile, neighbors: $0.findNeighborsIndices(population: allTilesTree))
         }
     }
     

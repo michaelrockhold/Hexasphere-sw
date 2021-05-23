@@ -129,8 +129,6 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
             DispatchQueue.main.async {
                 // The planet is fully initialized; add it to the root node of the current scene, and let the user play with it
 
-                //            scene.rootNode.addChildNode(earth.node)
-                //            self.theScene = scene
                 node.runAction(SCNAction.repeatForever(SCNAction.rotateBy(x: 0, y: .pi, z: 0, duration: 60.0)))
                 self.theScene.rootNode.addChildNode(node)
             }

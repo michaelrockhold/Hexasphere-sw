@@ -12,6 +12,7 @@
 		2E35116026570B5200E56590 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2E35115A26570B5200E56590 /* Assets.xcassets */; };
 		2E35116226570B5200E56590 /* HexaGlobeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E35115D26570B5200E56590 /* HexaGlobeApp.swift */; };
 		2E3511682658378300E56590 /* equirectangle_projection.png in Resources */ = {isa = PBXBuildFile; fileRef = 2E3511672658378300E56590 /* equirectangle_projection.png */; };
+		2E7A8B13265D43B800C390E6 /* LifeGameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7A8B12265D43B800C390E6 /* LifeGameState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +23,7 @@
 		2E35115C26570B5200E56590 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = SOURCE_ROOT; };
 		2E35115D26570B5200E56590 /* HexaGlobeApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HexaGlobeApp.swift; sourceTree = SOURCE_ROOT; };
 		2E3511672658378300E56590 /* equirectangle_projection.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = equirectangle_projection.png; sourceTree = "<group>"; };
+		2E7A8B12265D43B800C390E6 /* LifeGameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeGameState.swift; sourceTree = "<group>"; };
 		2E9CC4A926316710009B5F9C /* HexaGlobe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HexaGlobe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -47,6 +49,7 @@
 		D0D1A6111ECC653200171E3B = {
 			isa = PBXGroup;
 			children = (
+				2E7A8B12265D43B800C390E6 /* LifeGameState.swift */,
 				2E35115C26570B5200E56590 /* Info.plist */,
 				2E35115A26570B5200E56590 /* Assets.xcassets */,
 				2E35115D26570B5200E56590 /* HexaGlobeApp.swift */,
@@ -145,6 +148,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2E7A8B13265D43B800C390E6 /* LifeGameState.swift in Sources */,
 				2E35115E26570B5200E56590 /* ContentView.swift in Sources */,
 				2E35116226570B5200E56590 /* HexaGlobeApp.swift in Sources */,
 			);

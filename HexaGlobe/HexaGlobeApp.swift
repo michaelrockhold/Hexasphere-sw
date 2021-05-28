@@ -9,6 +9,7 @@
 import SwiftUI
 import SceneKit
 import Hexasphere
+import Combine
 
 extension CGColor {
     static let red = CGColor.init(red: 1.0, green: 0, blue: 0, alpha: 1)
@@ -21,7 +22,13 @@ class ImageGeoData: GeoData {
     
     let image: NSImage
     let imageRep: NSBitmapImageRep
-    
+    var pixelsWide: Int {
+        return imageRep.pixelsWide
+    }
+    var pixelsHigh: Int {
+        return imageRep.pixelsHigh
+    }
+
     init(imageFilename: String) {
         image = NSImage(named:imageFilename)!
         imageRep = NSBitmapImageRep(data: image.tiffRepresentation!)!
@@ -42,30 +49,54 @@ class ImageGeoData: GeoData {
     }
 }
 
-func updateFromGeo(earth: Hexasphere, node: Hexasphere.Node, geoData: GeoData) {
-    defer {
-        node.updateMaterialFromTexture()
-    }
-    for (tIdx, tile) in earth.tiles.enumerated() {
-        let tileColour: CGColor
-        if geoData.isLand(at: tile.coordinate) {
-            tileColour = .green
-        } else {
-            tileColour = .blue
+public struct TileInfo: CellInfo {
+    let cellID: Int
+    let neighbors: [Int]
+}
+
+public struct TileInfoIterator: IteratorProtocol {
+    var tileIterator: EnumeratedSequence<[Tile]>.Iterator
+
+    public mutating func next() -> TileInfo? {
+        guard let nextTileTuple = tileIterator.next() else {
+            return nil
         }
-        node.updateTileTexture(forTileAt: tIdx, with: tileColour)
-    }
-    // Right, and just to show that the tiles know their neighbors (That's cool, right?),
-    // let's get out the highlighter and colour some more tiles.
-    for tileIdx in 0..<12 {
-        let t = earth.tiles[tileIdx]
-        node.updateTileTexture(forTileAt: tileIdx, with: .red)
-        for nIdx in t.neighbors {
-            node.updateTileTexture(forTileAt: nIdx, with: .purple)
-        }
+        return TileInfo(cellID: nextTileTuple.offset, neighbors: nextTileTuple.element.neighbors)
     }
 }
 
+extension Hexasphere: CellInfoSource {
+    
+    public func makeIterator() -> TileInfoIterator {
+        return TileInfoIterator(tileIterator: self.tiles.enumerated().makeIterator())
+    }
+}
+
+typealias HexasphereLifeGameState = LifeGameState<Hexasphere>
+
+extension Hexasphere.Node {
+    
+    func initialLifeGameState(earth: Hexasphere, geoData: GeoData) -> HexasphereLifeGameState {
+                
+        defer {
+            self.updateMaterialFromTexture()
+        }
+        var landIndices = IndexSet()
+        for (tIdx, tile) in earth.tiles.enumerated() {
+            if geoData.isLand(at: tile.coordinate) {
+                landIndices.insert(tIdx)
+            }
+        }
+                
+        return LifeGameState(cellInfoSource: earth, liveCellIndices: landIndices)
+    }
+
+    func applyGameState(_ gameState: HexasphereLifeGameState, minTileIndex: Int, maxTileIndex: Int) {
+        let deadTileIdxs = IndexSet(minTileIndex...maxTileIndex).subtracting(gameState.liveCellIndices)
+        self.updateTiles(forIndices: deadTileIdxs, with: .blue)
+        self.updateTiles(forIndices: gameState.liveCellIndices, with: .green)
+    }
+}
 
 class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
     
@@ -75,6 +106,7 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
         //        .showBoundingBoxes,
         //        .showConstraints
     ]
+    var cancellable: Combine.AnyCancellable?
     
     @Published var theScene = SCNScene()
     
@@ -91,7 +123,7 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
             let node: Hexasphere.Node
             do {
                 let earth = try Hexasphere(radius: HexaGlobeApp.GLOBE_RADIUS,
-                                           numDivisions: 32,
+                                           numDivisions: 36,
                                            hexSize: 0.99) { [weak self] msg in
                     
                     // Update the status window with informative messages as the globe creation process proceeds.
@@ -103,7 +135,12 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
                     }
                 }
                 
-                node = try earth.buildNode(name: "Earth", initialColour: .green)
+                let geoData = ImageGeoData(imageFilename: "equirectangle_projection.png")
+
+                node = try earth.buildNode(name: "Earth",
+                                           initialColour: .blue,
+                                           tileTextureWidth: geoData.pixelsWide,
+                                           tileTextureHeight: geoData.pixelsHigh)
                 node.position = SCNVector3(0.0, 0.0, 0.0)
                 
                 // Just for fun, let's put a big yellow sphere in the center of the slowly spinning cloud
@@ -120,7 +157,19 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
                 
                 // OK, so now let's color the tiles in a fun way. Yes, this is fun too. Maybe
                 // even more than the yellow-ball-in-the-middle-of-the-world thing. Check it out
-                updateFromGeo(earth: earth, node: node, geoData: ImageGeoData(imageFilename: "equirectangle_projection.png"))
+                var currentGameState = node.initialLifeGameState(earth: earth, geoData: geoData)
+                
+                DispatchQueue.main.asyncAfter(wallDeadline: DispatchWallTime(timespec: timespec(tv_sec: 10, tv_nsec: 0))) {
+                    
+                    self.cancellable = Timer.publish(every: 1, on: .main, in: .common)
+                        .autoconnect()
+                        .sink() {
+                            print ("timer fired: \($0)")
+                            currentGameState = currentGameState.nextState()
+                            node.applyGameState(currentGameState, minTileIndex: 0, maxTileIndex: earth.tiles.count-1)
+                    }
+                }
+
             }
             catch {
                 fatalError()

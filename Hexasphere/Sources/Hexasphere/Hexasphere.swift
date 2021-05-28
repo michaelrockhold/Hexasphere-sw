@@ -3,6 +3,8 @@ import MapKit
 import KDTree
 
 public protocol GeoData {
+    var pixelsWide: Int { get }
+    var pixelsHigh: Int { get }
     func isLand(at: CLLocationCoordinate2D) -> Bool
 }
 

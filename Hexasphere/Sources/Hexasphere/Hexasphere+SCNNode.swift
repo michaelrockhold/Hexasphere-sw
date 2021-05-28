@@ -7,16 +7,32 @@
 
 import SceneKit
 
-extension Vector {
-    func scn3() -> SCNVector3 {
-        return SCNVector3Make(CGFloat(x), CGFloat(y), CGFloat(z))
+extension SCNVector3 {
+    init(vector v: Vector) {
+        self = SCNVector3Make(CGFloat(v.x), CGFloat(v.y), CGFloat(v.z))
+    }
+
+    init(glkvector: GLKVector3) {
+        self = SCNVector3FromGLKVector3(glkvector)
     }
 }
 
 extension GLKVector3 {
-    func scn3() -> SCNVector3 {
-        return SCNVector3FromGLKVector3(self)
+    init(vector v: Vector) {
+        self = GLKVector3Make(Float(v.x), Float(v.y), Float(v.z))
     }
+}
+
+private func normal_(_ v1: Vector, _ v2: Vector, _ v3: Vector) -> SCNVector3 {
+    return normal_(GLKVector3(vector: v1), GLKVector3(vector: v2), GLKVector3(vector: v3))
+}
+
+/*!
+ * Comment from author of ObjC original:
+ * Is supposed the compute the normal for three vectors. Not entirely convinced it works as expected.
+ */
+private func normal_(_ v1: GLKVector3, _ v2: GLKVector3, _ v3: GLKVector3) -> SCNVector3 {
+    return SCNVector3(glkvector: GLKVector3Normalize(GLKVector3CrossProduct(GLKVector3Subtract(v2, v1), GLKVector3Subtract(v3, v1))))
 }
 
 @available(macOS 10.15, *)
@@ -38,12 +54,17 @@ extension Hexasphere {
         required init?(coder: NSCoder) {
             fatalError("init(coder:) has not been implemented")
         }
-
+        
         public func updateTile(at tileIndex: Tile.TileIndex, with color: CGColor) {
             tileTexture.setPixel(forIndex: tileIndex, to: color)
             oneMeshMaterial.diffuse.contents = tileTexture.tileTextureImage
         }
-        
+
+        public func updateTiles(forIndices tileIndices: IndexSet, with color: CGColor) {
+            tileTexture.setPixel(forIndices: tileIndices, to: color)
+            oneMeshMaterial.diffuse.contents = tileTexture.tileTextureImage
+        }
+
         public func updateTileTexture(forTileAt tileIndex: Tile.TileIndex, with colour: CGColor) {
             tileTexture.setPixel(forIndex: tileIndex, to: colour)
         }
@@ -51,11 +72,15 @@ extension Hexasphere {
             oneMeshMaterial.diffuse.contents = tileTexture.tileTextureImage
         }
     }
+    
 
     // Now create a SceneKit node from the hexasphere, where all tiles become part of a single node,
     // rather than trying to get SceneKit to render thousands of nodes.
     
-    public func buildNode(name: String, initialColour: CGColor) throws -> Node {
+    public func buildNode(name: String,
+                          initialColour: CGColor,
+                          tileTextureWidth: Int,
+                          tileTextureHeight: Int) throws -> Node {
         
         let startBuild = Date.timeIntervalSinceReferenceDate
         status("Started at \(startBuild)")
@@ -63,31 +88,33 @@ extension Hexasphere {
             let endBuild = Date.timeIntervalSinceReferenceDate
             status("build time taken: \(endBuild - startBuild)")
         }
-
+        
         // We colour each tile individually by using a texture and mapping each tile ID to
         // a coordinate that can be derived from the tile ID.
         // Create the default texture
-        let tileTexture = try MutableTileTexture()
-
+        let tileTexture = try MutableTileTexture(width: tileTextureWidth, height: tileTextureHeight)
+        
         var oneMeshIndices = [UInt32]()
         var oneMeshNormals = [SCNVector3]()
         var oneMeshVertices = [SCNVector3]()
         var oneMeshTextureCoordinates = [CGPoint]()
-                
+        
         var vertexIndex = 0
         
         for (tileIdx, tile) in tiles.enumerated() {
             
+            let normal = normal_(tile.boundaries[0], tile.boundaries[1], tile.boundaries[2])
+            let textureCoord = tileTexture.textureCoord(forTileIndex: tileIdx, normalised: true)
+            
             for boundary in tile.boundaries {
-                oneMeshVertices.append(boundary.scn3())
-                oneMeshNormals.append(tile.normal.scn3())
-                oneMeshTextureCoordinates.append(MutableTileTexture.textureCoord(forTileIndex: tileIdx,
-                                                                                 normalised: true))
+                oneMeshVertices.append(SCNVector3(vector: boundary))
+                oneMeshNormals.append(normal)
+                oneMeshTextureCoordinates.append(textureCoord)
             }
             
             // Sometimes there are pentagons (well, 12 times), but mostly it's hexagons.
             let indicesNeeded = (tile.boundaries.count - 2) * 3
-                        
+            
             for i in [0, 1, 2,
                       0, 2, 3,
                       0, 3, 4,
@@ -101,27 +128,26 @@ extension Hexasphere {
         
         status("World tiles: \(tiles.count); vertices: \(vertexIndex); indices: \(oneMeshIndices.count)")
         
-        let geometry = createGeometry(indices: oneMeshIndices,
-                                           normals: oneMeshNormals,
-                                           vertices: oneMeshVertices,
-                                           textureCoordinates: oneMeshTextureCoordinates)
+        let geometry = Self.createGeometry(indices: oneMeshIndices,
+                                      normals: oneMeshNormals,
+                                      vertices: oneMeshVertices,
+                                      textureCoordinates: oneMeshTextureCoordinates)
         let material = SCNMaterial()
         material.diffuse.contents = tileTexture.tileTextureImage
         material.isDoubleSided = true
         material.locksAmbientWithDiffuse = true
         geometry.materials = [material]
-
+        
         return Node(geometry: geometry, tileTexture: tileTexture, oneMeshMaterial: material, name: name)
     }
     
-    private func createGeometry(
-        
+    private static func createGeometry(
         indices: [UInt32],
         normals: [SCNVector3],
         vertices: [SCNVector3],
         textureCoordinates: [CGPoint]
-        ) -> SCNGeometry {
-                
+    ) -> SCNGeometry {
+        
         // Now that we have all the data, populate the various SceneKit structures ahead of creating
         // the geometry.
         //
@@ -138,7 +164,7 @@ extension Hexasphere {
         // Create a texture map that tells SceneKit where in the material to get colour information for
         // each vertex.
         let textureMappingSource = SCNGeometrySource(textureCoordinates: textureCoordinates)
-                
+        
         // Create the geometry, at last.
         return SCNGeometry(sources: [oneMeshVerticeSource, oneMeshNormalSource, textureMappingSource], elements: [oneMeshElement])
     }

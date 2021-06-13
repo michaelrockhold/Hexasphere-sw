@@ -6,68 +6,37 @@
 //
 
 import Foundation
+import Numerics
 
-class Face {
+struct Face {
     
-    // Contrary to what you might expect, the Points own the Faces
-    // they are part of, not the other way around
-    unowned let pA: Point
-    unowned let pB: Point
-    unowned let pC: Point
-
-    private let pointIDSet: Set<Int>
-    private let pointSet: Set<Int64>
-    
-    init(_ a: Point, _ b: Point, _ c: Point, registering: Bool = true) {
-        
-        pA = a
-        pB = b
-        pC = c
-        
-        pointIDSet = Set<Int>(arrayLiteral: pA.pointID, pB.pointID, pC.pointID)
-        pointSet = Set<Int64>(arrayLiteral: pA.comparisonValue, pB.comparisonValue, pC.comparisonValue)
-
-        if registering {
-            pA.remember(face: self)
-            pB.remember(face: self)
-            pC.remember(face: self)
-        }
+    let a: Point
+    let b: Point
+    let c: Point
+            
+    func project(toRadius r: Double) -> Face {
+        return Face(a: a.project(toRadius: r), b: b.project(toRadius: r), c: c.project(toRadius: r))
     }
-        
-    var centroid: Vector {
-        return Vector.centroid(pA.v, pB.v, pC.v)
+
+    var centroid: Point {
+        return Point(x: (a.x + b.x + c.x)/3.0, y: (a.y + b.y + c.y)/3.0, z: (a.z + b.z + c.z)/3.0)
     }
 
     // Faces are adjacent if they have two points in common; therefore subtracting one's points from the other's should leave 0 or 1
-    func isAdjacent(to face: Face) -> Bool {
-        let diff = pointIDSet.subtracting(face.pointIDSet)
-//        let diff = pointSet.subtracting(face.pointSet)
-        return diff.count < 2
-    }
-
-    static func sortedInAdjacencyOrder(_ faces: [Face]) -> [Face] {
-        guard faces.count > 0 else {
-            return [Face]()
-        }
-
-        var workingArray = faces // copy
-        var ret = [Face]()
+    func isAdjacent(to otherFace: Face) -> Bool {
+        var commonCount = 0
+        let epsilon = 0.01
         
-        ret.append(workingArray.removeFirst())
-        while workingArray.count > 0 {
-            var adjacentIdx = -1
-            for (idx,f) in workingArray.enumerated() {
-                if f.isAdjacent(to: ret.last!) {
-                    adjacentIdx = idx
-                    break
+        for p1 in [a, b, c] {
+            for p2 in [otherFace.a, otherFace.b, otherFace.c] {
+                if p1.distance(to: p2) < epsilon {
+                    commonCount += 1
                 }
+                if commonCount > 1 { return true }
             }
-            if adjacentIdx < 0 {
-                fatalError("error finding adjacent face") // or we loop forever now
-            }
-            ret.append(workingArray.remove(at: adjacentIdx))
         }
-        return ret
+        
+        return commonCount >= 2
     }
 }
 

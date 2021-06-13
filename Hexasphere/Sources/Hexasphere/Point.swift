@@ -12,7 +12,7 @@ func distanceTo(xa: Double, ya: Double, za: Double, xb: Double, yb: Double, zb: 
     return .sqrt(.pow(xb-xa, 2) + .pow(yb-ya, 2) + .pow(zb-za, 2))
 }
 
-public struct Vector {
+public struct Point {
     let x: Double
     let y: Double
     let z: Double
@@ -21,86 +21,32 @@ public struct Vector {
         return .sqrt(x*x + y*y + z*z)
     }
     
-    func distance(to b: Vector) -> Double {
-        return Vector(x: b.x-x, y: b.y-y, z: b.z-z).hypotenuse()
+    func distance(to b: Point) -> Double {
+        return Point(x: b.x-x, y: b.y-y, z: b.z-z).hypotenuse()
     }
     
-    func squaredDistance(to b: Vector) -> Double {
+    func squaredDistance(to b: Point) -> Double {
         return pow(b.x-x, 2) + pow(b.y-y, 2) + pow(b.z-z, 2)
     }
     
-    func project(toRadius radius: Double, withPercentage percent: Double) -> Vector {
+    func project(toRadius radius: Double) -> Point {
+        return project(toRadius: radius, withPercentage: 1.0)
+    }
+
+    func project(toRadius radius: Double, withPercentage percent: Double) -> Point {
         let percent: Double = .maximum(0.0, .minimum(1.0, percent))
         let ratio = radius / hypotenuse()
-        return Vector(x: x * ratio * percent, y: y * ratio * percent, z: z * ratio * percent)
+        return Point(x: x * ratio * percent, y: y * ratio * percent, z: z * ratio * percent)
     }
     
-    func surfaceTangent() -> Vector {
+    func surfaceTangent() -> Point {
         let theta: Double = .acos(z/hypotenuse())
         let phi: Double = .atan2(y: y, x: x)
         
         //then add pi/2 to theta or phi
-        return Vector(x: sin(theta) * cos(phi), y: sin(theta) * sin(phi), z: cos(theta))
+        return Point(x: sin(theta) * cos(phi), y: sin(theta) * sin(phi), z: cos(theta))
     }
-    
-    static func centroid(_ a: Vector, _ b: Vector, _ c: Vector) -> Vector {
-        return Vector(x: (a.x + b.x + c.x)/3.0, y: (a.y + b.y + c.y)/3.0, z: (a.z + b.z + c.z)/3.0)
-    }
-    
-    func comparisonValue() -> Int64 {
-        return Int64(round(x*100.0)) * 1000000000 +
-            Int64(round(y*100.0)) * 1000000 +
-            Int64(round(z*100.0))
-    }
-
-}
-
-class Point: NSObject {
-        
-    let pointID: Int
-    
-    var v: Vector
-    var comparisonValue: Int64 = 0
-    
-    var faces = [Face]()
-    
-    
-    init(_ pID: Int, x: Double, y: Double, z: Double) {
-        pointID = pID
-        
-        v = Vector(x: x, y: y, z: z)
-        super.init()
-        recalculateComparisonValue()
-    }
-    
-    deinit {
-        faces.removeAll()
-    }
-    
-    func remember(face: Face) {
-        faces.append(face)
-    }
-    
-    func distance(toPoint b: Point) -> Double {
-        return v.distance(to: b.v)
-    }
-
-    var surfaceTangent: Vector {
-        return v.surfaceTangent()
-    }
-
-    private func recalculateComparisonValue() {
-        comparisonValue = v.comparisonValue()
-    }
-        
-    override func isEqual(_ object: Any?) -> Bool {
-        if let other = object as? Point {
-            return self.comparisonValue == other.comparisonValue
-        } else {
-            return false
-        }
-    }
-        
+                
     func subdivide(point p: Point, count: Int, pointSource: PointSource) -> [Point] {
         
         var segment = [Point]()
@@ -109,9 +55,9 @@ class Point: NSObject {
         for i in 1..<count {
             let iOverCount = Double(i) / Double(count)
             let d = 1.0 - iOverCount
-            let np = pointSource.newPoint(v.x * d + p.v.x * iOverCount,
-                                          v.y * d + p.v.y * iOverCount,
-                                          v.z * d + p.v.z * iOverCount)
+            let np = pointSource.newPoint(x * d + p.x * iOverCount,
+                                          y * d + p.y * iOverCount,
+                                          z * d + p.z * iOverCount)
             
             segment.append(pointSource.checkPoint(np))
         }
@@ -119,14 +65,16 @@ class Point: NSObject {
         segment.append(p)
         return segment
     }
-    
-    
-    func project(toRadius radius: Double) {
-        project(toRadius: radius, withPercentage: 1.0)
+}
+
+extension Point: Hashable {
+    public static func == (lhs: Point, rhs: Point) -> Bool {
+        return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z
     }
-    
-    func project(toRadius radius: Double, withPercentage percent: Double) {
-        v = v.project(toRadius: radius, withPercentage: percent)
-        recalculateComparisonValue()
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(x)
+        hasher.combine(y)
+        hasher.combine(z)
     }
 }

@@ -78,9 +78,6 @@ extension Hexasphere.Node {
     
     func initialLifeGameState(earth: Hexasphere, geoData: GeoData) -> HexasphereLifeGameState {
                 
-        defer {
-            self.updateMaterialFromTexture()
-        }
         var landIndices = IndexSet()
         for (tIdx, tile) in earth.tiles.enumerated() {
             if geoData.isLand(at: tile.coordinate) {
@@ -91,10 +88,12 @@ extension Hexasphere.Node {
         return LifeGameState(cellInfoSource: earth, liveCellIndices: landIndices)
     }
 
-    func applyGameState(_ gameState: HexasphereLifeGameState, minTileIndex: Int, maxTileIndex: Int) {
-        let deadTileIdxs = IndexSet(minTileIndex...maxTileIndex).subtracting(gameState.liveCellIndices)
-        self.updateTiles(forIndices: deadTileIdxs, with: .blue)
-        self.updateTiles(forIndices: gameState.liveCellIndices, with: .green)
+    func applyGameState(_ gameState: HexasphereLifeGameState) {
+        let maxTileIndex = gameState.cellInfoSource.tiles.count - 1
+        for idx in 0...maxTileIndex {
+            updateTileTexture(forTileAt: idx, with: gameState.liveCellIndices.contains(idx) ? .green : .blue)
+        }
+        updateMaterialFromTexture()
     }
 }
 
@@ -119,12 +118,24 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
         
         DispatchQueue.global(qos: .background).async {
             
-            
+            /*
+             DIVISIONS|
+             0 invalid
+             1 all pentagons (12)
+             2 1 hexagon between each of the 12 pentagons (total of 42 tiles)
+             4 3 hexagons between pairs of pentagons (162 tiles)
+             8 7 hexagons between, (642)
+             16 15 hexs, (2562)
+             144: World tiles: 208486; vertices: 1244160; indices: 2481564
+            288: World tiles: 831718; vertices: 4976640; indices: 9939612 (each tile roughly 613 km2, or 1/5 of Rhode Island)
+             
+             */
             let node: Hexasphere.Node
+            var initialGameState: LifeGameState<Hexasphere>? = nil
             do {
                 let earth = try Hexasphere(radius: HexaGlobeApp.GLOBE_RADIUS,
-                                           numDivisions: 36,
-                                           hexSize: 0.99) { [weak self] msg in
+                                           numDivisions: 288,
+                                           hexSize: 1.0) { [weak self] msg in
                     
                     // Update the status window with informative messages as the globe creation process proceeds.
                     DispatchQueue.main.async {
@@ -139,39 +150,26 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
 
                 node = try earth.buildNode(name: "Earth",
                                            initialColour: .blue,
-                                           tileTextureWidth: geoData.pixelsWide,
-                                           tileTextureHeight: geoData.pixelsHigh)
+                                           tileCount: earth.tiles.count)
                 node.position = SCNVector3(0.0, 0.0, 0.0)
                 
                 // Just for fun, let's put a big yellow sphere in the center of the slowly spinning cloud
                 // of tiles. I dunno, it just seems cool. It's cool! Cool yellow mini-sun in the center of
                 // the world. Why not?
-                node.addChildNode(SCNNode(geometry: {
-                                            let geom = SCNSphere(radius: CGFloat(earth.radius*0.95))
-                                            geom.firstMaterial = {
-                                                let material = SCNMaterial()
-                                                material.diffuse.contents = NSColor.yellow
-                                                return material
-                                            }()
-                                            return geom }()))
+//                node.addChildNode(SCNNode(geometry: {
+//                                            let geom = SCNSphere(radius: CGFloat(earth.radius*0.95))
+//                                            geom.firstMaterial = {
+//                                                let material = SCNMaterial()
+//                                                material.diffuse.contents = NSColor.yellow
+//                                                return material
+//                                            }()
+//                                            return geom }()))
                 
-                // OK, so now let's color the tiles in a fun way. Yes, this is fun too. Maybe
-                // even more than the yellow-ball-in-the-middle-of-the-world thing. Check it out
-                var currentGameState = node.initialLifeGameState(earth: earth, geoData: geoData)
-                
-                DispatchQueue.main.asyncAfter(wallDeadline: DispatchWallTime(timespec: timespec(tv_sec: 10, tv_nsec: 0))) {
-                    
-                    self.cancellable = Timer.publish(every: 1, on: .main, in: .common)
-                        .autoconnect()
-                        .sink() {
-                            print ("timer fired: \($0)")
-                            currentGameState = currentGameState.nextState()
-                            node.applyGameState(currentGameState, minTileIndex: 0, maxTileIndex: earth.tiles.count-1)
-                    }
-                }
+                initialGameState = node.initialLifeGameState(earth: earth, geoData: geoData)
 
             }
-            catch {
+            catch  {
+                print("Unexpected error: \(error).")
                 fatalError()
             }
             
@@ -180,6 +178,19 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
 
                 node.runAction(SCNAction.repeatForever(SCNAction.rotateBy(x: 0, y: .pi, z: 0, duration: 60.0)))
                 self.theScene.rootNode.addChildNode(node)
+                
+                guard var gameState = initialGameState else {
+                    return
+                }
+                node.applyGameState(gameState)
+
+//                self.cancellable = Timer.publish(every: 0.3, on: .main, in: .common)
+//                    .autoconnect()
+//                    .sink() { _ in
+//                        gameState = gameState.nextState()
+//                        node.applyGameState(gameState)
+//                }
+
             }
         }
     }

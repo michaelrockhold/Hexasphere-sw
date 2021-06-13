@@ -8,13 +8,42 @@ public protocol GeoData {
     func isLand(at: CLLocationCoordinate2D) -> Bool
 }
 
-protocol PointSource {
-    func newPoint(_ x: Double, _ y: Double, _ z: Double) -> Point
-    
-    func checkPoint(_ p: Point) -> Point
-}
-
 public typealias StatusFn = (String)->(Void)
+
+extension Face {
+    func subdivide(numDivisions: Int,
+                   faceIndex: Int,
+                   points: PointSource,
+                   registry fr: CentreRegistry,
+                   status: StatusFn) {
+        
+        let startBuildOfFace = Date.timeIntervalSinceReferenceDate
+        status("Starting computation of face \(faceIndex+1)")
+        defer {
+            let endBuildOfFace = Date.timeIntervalSinceReferenceDate
+            status("Face \(faceIndex+1): computation time \(endBuildOfFace - startBuildOfFace)")
+        }
+                    
+        var bottom = [self.a]
+        let left = self.a.subdivide(point: self.b, count: numDivisions, pointSource: points)
+        let right = self.a.subdivide(point: self.c, count: numDivisions, pointSource: points)
+        
+        for i in 1...numDivisions {
+            let prev = bottom
+            bottom = left[i].subdivide(point: right[i], count: i, pointSource: points)
+            
+            // New faces are retained by the points that participate in them, so no need to
+            // keep a reference to them after they're created
+            for j in 0..<i {
+                fr.enregister(face: Face(a: prev[j], b: bottom[j], c: bottom[j+1]))
+                
+                if (j > 0) {
+                    fr.enregister(face: Face(a: prev[j-1], b: prev[j], c: bottom[j]))
+                }
+            }
+        }
+    }
+}
 
 @available(macOS 10.15, *)
 public class Hexasphere {
@@ -37,7 +66,7 @@ public class Hexasphere {
                 hexSize s: Double,
                 status sf: @escaping StatusFn) throws {
         
-        guard d >= 1 && d <= 144 else {
+        guard d >= 1 else {
             throw HexasphereError.InvalidArgument
         }
         
@@ -45,38 +74,6 @@ public class Hexasphere {
         numDivisions = d
         hexSize = s
         status = sf
-    }
-    
-    private class Points: PointSource {
-        private var nextPointID = 0
-        var points = [Point]()
-        
-        func newPoint(_ x: Double, _ y: Double, _ z: Double) -> Point {
-            defer { nextPointID += 1 }
-            return Point(nextPointID, x: x, y: y, z: z)
-        }
-        
-        func newFaces(_ tt: [(Int, Int, Int)]) -> [Face] {
-            return tt.map {
-                return Face(points[$0], points[$1], points[$2], registering: false)
-            }
-        }
-        
-        func checkPoint(_ p: Point) -> Point {
-            for oldPoint in points {
-                if p == oldPoint {
-                    return oldPoint
-                }
-            }
-            points.append(p)
-            return p
-        }
-        
-        func addPoints(_ tt: [(Double, Double, Double)]) {
-            for t in tt {
-                points.append(newPoint(t.0, t.1, t.2))
-            }
-        }
     }
 
     public lazy var tiles: [Tile] = {
@@ -89,35 +86,39 @@ public class Hexasphere {
         return calculateTiles(radius: radius, numDivisions: numDivisions, hexSize: hexSize, status: status)
     }()
 
-    func makePoints(radius r: Double, numDivisions: Int, status: @escaping StatusFn) -> [Point] {
+    private func makePoints(numDivisions: Int, status: @escaping StatusFn) -> (Set<Point>, CentreRegistry) {
         
-        let TAO = 1.61803399
+        let PHI = (1.0 + .sqrt(5.0)) / 2.0
         
-        let pointSource = Points()
+        let pointSource = PointSource()
 
         // We start with the corners of the 12 original pentagons
-        pointSource.addPoints([
-            /* 0 */    (       1000.0,  TAO * 1000.0,          0.0),
-            /* 1 */    (      -1000.0,  TAO * 1000.0,          0.0),
-            /* 2 */    (       1000.0, -TAO * 1000.0,          0.0),
+
+        let initialPoints = [
+            /* 0 */    ( 1.0,  PHI,  0.0),
+            /* 1 */    (-1.0,  PHI,  0.0),
+            /* 2 */    ( 1.0, -PHI,  0.0),
             
-            /* 3 */    (      -1000.0, -TAO * 1000.0,          0.0),
-            /* 4 */    (          0.0,        1000.0,  TAO * 1000.0),
-            /* 5 */    (          0.0,       -1000.0,  TAO * 1000.0),
+            /* 3 */    (-1.0, -PHI,  0.0),
+            /* 4 */    ( 0.0,  1.0,  PHI),
+            /* 5 */    ( 0.0, -1.0,  PHI),
             
-            /* 6 */    (          0.0,        1000.0, -TAO * 1000.0),
-            /* 7 */    (          0.0,       -1000.0, -TAO * 1000.0),
-            /* 8 */    ( TAO * 1000.0,           0.0,        1000.0),
+            /* 6 */    ( 0.0,  1.0, -PHI),
+            /* 7 */    ( 0.0, -1.0, -PHI),
+            /* 8 */    ( PHI,  0.0,  1.0),
             
-            /* 9 */    (-TAO * 1000.0,           0.0,        1000.0),
-            /* 10*/    ( TAO * 1000.0,           0.0,       -1000.0),
-            /* 11*/    (-TAO * 1000.0,           0.0,       -1000.0)
-        ])
+            /* 9 */    (-PHI,  0.0,  1.0),
+            /* 10*/    ( PHI,  0.0,  -1.0),
+            /* 11*/    (-PHI,  0.0,  -1.0)
+        ].map { t in
+            pointSource.newPoint(t.0, t.1, t.2)
+        }
+        
         
         // Now we assign those original points to some triangular faces.
-        // Each of the original points 'participates' five ways in a number
-        // of different faces
-        let faces = pointSource.newFaces([
+        // Each of the original twelve points 'participates' in five
+        // different faces
+        let faces = [
             (0, 1, 4),
             (1, 9, 4),
             (4, 9, 5),
@@ -141,42 +142,17 @@ public class Hexasphere {
             (11, 6, 7),
             (6, 0, 10),
             (9, 1, 11)
-        ])
-                
-        for (fidx, face) in faces.enumerated() {
-            
-            let startBuildOfFace = Date.timeIntervalSinceReferenceDate
-            status("Starting computation of face \(fidx+1) of \(faces.count)")
-            defer {
-                let endBuildOfFace = Date.timeIntervalSinceReferenceDate
-                status("Face \(fidx+1) of \(faces.count): computation time \(endBuildOfFace - startBuildOfFace)")
-            }
-                        
-            var bottom = [face.pA]
-            let left = face.pA.subdivide(point: face.pB, count: numDivisions, pointSource: pointSource)
-            let right = face.pA.subdivide(point: face.pC, count: numDivisions, pointSource: pointSource)
-            
-            for i in 1...numDivisions {
-                let prev = bottom
-                bottom = left[i].subdivide(point: right[i], count: i, pointSource: pointSource)
-                
-                // New faces are retained by the points that participate in them, so no need to
-                // keep a reference to them after they're created
-                for j in 0..<i {
-                    _ = Face(prev[j],
-                             bottom[j],
-                             bottom[j+1])
-                    
-                    if (j > 0) {
-                        _ = Face(prev[j-1],
-                                 prev[j],
-                                 bottom[j])
-                    }
-                }
-            }
+        ].map {
+            return Face(a: initialPoints[$0], b: initialPoints[$1], c: initialPoints[$2])
         }
         
-        return pointSource.points
+        let centersRegistry = CentreRegistry()
+        
+        for (fidx, face) in faces.enumerated() {
+            face.subdivide(numDivisions: numDivisions, faceIndex: fidx, points: pointSource, registry: centersRegistry, status: status)
+        }
+        
+        return (pointSource.points, centersRegistry)
     }
     
     func calculateTiles(radius: Double, numDivisions: Int, hexSize: Double, status: @escaping StatusFn) -> [Tile] {
@@ -193,15 +169,11 @@ public class Hexasphere {
         
         // Plot points on the surface of a sphere by starting the pointy bits of 12 pentagons (an isohedron),
         // and then iteratively subdividing the lines between those points
-        let points = makePoints(radius: radius, numDivisions: numDivisions, status: status)
-        // Why do this? Don't know much trigonometry
-        points.forEach {
-            $0.project(toRadius: radius)
-        }
+        let (points, centers) = makePoints(numDivisions: numDivisions, status: status)
         
         // Now we can create a Tile for each point we've plotted
         let population = points.map {
-            _Tile(centre: $0, sphereRadius: radius, hexSize: hexSize)
+            _Tile(centre: $0, faceRegistry:centers, sphereRadius: radius, hexSize: hexSize)
         }
         
         tileCount = population.count

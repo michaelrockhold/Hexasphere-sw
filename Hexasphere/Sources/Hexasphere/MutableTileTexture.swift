@@ -13,19 +13,22 @@ class MutableTileTexture {
     static let bytesPerPixel = 4
     static let bitsPerComponent = 8
     
-    let width: Int
-    let height: Int
     let context: CGContext
     var bitmapData: [UInt8]
+    let pixelWidth: Int
+    let pixelHeight: Int
     
-    init(width w: Int, height h: Int) throws {
+    init(tileCount: Int) throws {
         
-        width = w
-        height = h
-        bitmapData = MutableTileTexture.makeBitmapData(count: MutableTileTexture.bytesPerPixel * w * h)
+        pixelWidth = Int(sqrt(Double(tileCount)).rounded(.up))
+        let h = tileCount / pixelWidth
+        pixelHeight = h + (tileCount % pixelWidth > 0 ? 1 : 0)
+        
+        bitmapData = MutableTileTexture.makeBitmapData(count: MutableTileTexture.bytesPerPixel * pixelWidth * pixelHeight)
         context = MutableTileTexture.makeContext(data: &bitmapData,
-                                                 width: w, height: h,
-                                                 bytesPerRow: MutableTileTexture.bytesPerPixel * w)
+                                                 width: pixelWidth,
+                                                 height: pixelHeight,
+                                                 bytesPerRow: MutableTileTexture.bytesPerPixel * pixelWidth)
     }
     
     private static func makeBitmapData(count: Int) -> [UInt8] {
@@ -62,45 +65,72 @@ class MutableTileTexture {
         }
     }
     
-    func setPixel(forIndex tileIndex: Int, to color: CGColor) {
-        setPixel(forIndices: IndexSet(integer: tileIndex), to: color)
+    private func byteIndex(forTileIndex ti: Int) -> Int {
+        return ti * MutableTileTexture.bytesPerPixel
+    }
+
+    func textureCoord(forTileIndex tileIndex: Int, normalised: Bool) -> CGPoint {
+        
+        let w = tileIndex % pixelWidth
+        let h = tileIndex / pixelWidth
+        
+        let ret = CGPoint(x: CGFloat(w), y: CGFloat(h))
+        if normalised {
+            return CGPoint(x: CGFloat((ret.x + CGFloat(0.5)) / CGFloat(pixelWidth)),
+                           y: CGFloat((ret.y + CGFloat(0.5)) / CGFloat(pixelHeight)))
+        }
+        
+        return ret
+    }
+
+    private func byteIndex(forTextureCoord coord: CGPoint) -> Int {
+        
+        let x = Int(coord.x.rounded(.down))
+        let y = Int(coord.y.rounded(.down))
+        
+        return (y * pixelWidth + x) * MutableTileTexture.bytesPerPixel
+    }
+
+    private func setPixel(atByteIndex byteIndex: Int, r: UInt8, g: UInt8, b: UInt8, a: UInt8) {
+        guard byteIndex+4 <= bitmapData.count else {
+            print("ERROR could not calculate a valid byte index")
+            return
+        }
+        
+        bitmapData[byteIndex] = r
+        bitmapData[byteIndex + 1] = g
+        bitmapData[byteIndex + 2] = b
+        bitmapData[byteIndex + 3] = a
     }
     
-    func setPixel(forIndices tileIndices: IndexSet, to color: CGColor) {
-        
+    func setPixel(forTextureCoord coord: CGPoint, to color: CGColor) {
+        let components = color.components!
+        setPixel(atByteIndex: byteIndex(forTextureCoord: coord),
+                 r: UInt8(components[0] * 255.0),
+                 g: UInt8(components[1] * 255.0),
+                 b: UInt8(components[2] * 255.0),
+                 a: UInt8(components[3] * 255.0))
+    }
+       
+    func setPixel(forIndex ti: Int, to color: CGColor) {
         let components = color.components!
         let r = UInt8(components[0] * 255.0)
         let g = UInt8(components[1] * 255.0)
         let b = UInt8(components[2] * 255.0)
         let a = UInt8(components[3] * 255.0)
         
-        for x in tileIndices {
-            
-            let coord = textureCoord(forTileIndex:x, normalised: false)
-            
-            let byteIndex = (width * Int(coord.y) + Int(coord.x)) * 4 //the offset of pixel(x,y) into the 1d array of pixel components
-            
-            guard byteIndex+4 <= bitmapData.count else {
-                continue
-            }
-            bitmapData[byteIndex] = r
-            bitmapData[byteIndex + 1] = g
-            bitmapData[byteIndex + 2] = b
-            bitmapData[byteIndex + 3] = a
+        setPixel(atByteIndex: byteIndex(forTileIndex: ti), r: r, g: g, b: b, a: a)
+    }
+
+    func setPixel(forIndices tileIndices: IndexSet, to color: CGColor) {
+        let components = color.components!
+        let r = UInt8(components[0] * 255.0)
+        let g = UInt8(components[1] * 255.0)
+        let b = UInt8(components[2] * 255.0)
+        let a = UInt8(components[3] * 255.0)
+        
+        for ti in tileIndices {
+            setPixel(atByteIndex: byteIndex(forTileIndex: ti), r: r, g: g, b: b, a: a)
         }
     }
-    
-    func textureCoord(forTileIndex tileIndex: Int, normalised: Bool) -> CGPoint {
-        let wf = width / 4
-        let hf = height / 4
-        
-        let x = Double(tileIndex % wf) * 4
-        let y = Double(tileIndex / hf) * 4
-        
-        return normalised ? CGPoint(x: CGFloat((x + 0.5) / Double(width)),
-                                    y: CGFloat((y + 0.5) / Double(height)))
-            
-            : CGPoint(x: CGFloat(x), y: CGFloat(y))
-    }
-    
 }

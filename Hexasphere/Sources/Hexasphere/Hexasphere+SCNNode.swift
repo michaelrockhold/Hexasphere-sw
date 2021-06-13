@@ -8,8 +8,8 @@
 import SceneKit
 
 extension SCNVector3 {
-    init(vector v: Vector) {
-        self = SCNVector3Make(CGFloat(v.x), CGFloat(v.y), CGFloat(v.z))
+    init(point p: Point) {
+        self = SCNVector3Make(CGFloat(p.x), CGFloat(p.y), CGFloat(p.z))
     }
 
     init(glkvector: GLKVector3) {
@@ -18,13 +18,13 @@ extension SCNVector3 {
 }
 
 extension GLKVector3 {
-    init(vector v: Vector) {
-        self = GLKVector3Make(Float(v.x), Float(v.y), Float(v.z))
+    init(point p: Point) {
+        self = GLKVector3Make(Float(p.x), Float(p.y), Float(p.z))
     }
 }
 
-private func normal_(_ v1: Vector, _ v2: Vector, _ v3: Vector) -> SCNVector3 {
-    return normal_(GLKVector3(vector: v1), GLKVector3(vector: v2), GLKVector3(vector: v3))
+private func normal_(_ p1: Point, _ p2: Point, _ p3: Point) -> SCNVector3 {
+    return normal_(GLKVector3(point: p1), GLKVector3(point: p2), GLKVector3(point: p3))
 }
 
 /*!
@@ -79,8 +79,7 @@ extension Hexasphere {
     
     public func buildNode(name: String,
                           initialColour: CGColor,
-                          tileTextureWidth: Int,
-                          tileTextureHeight: Int) throws -> Node {
+                          tileCount: Int) throws -> Node {
         
         let startBuild = Date.timeIntervalSinceReferenceDate
         status("Started at \(startBuild)")
@@ -92,7 +91,7 @@ extension Hexasphere {
         // We colour each tile individually by using a texture and mapping each tile ID to
         // a coordinate that can be derived from the tile ID.
         // Create the default texture
-        let tileTexture = try MutableTileTexture(width: tileTextureWidth, height: tileTextureHeight)
+        let tileTexture = try MutableTileTexture(tileCount: tileCount)
         
         var oneMeshIndices = [UInt32]()
         var oneMeshNormals = [SCNVector3]()
@@ -107,7 +106,7 @@ extension Hexasphere {
             let textureCoord = tileTexture.textureCoord(forTileIndex: tileIdx, normalised: true)
             
             for boundary in tile.boundaries {
-                oneMeshVertices.append(SCNVector3(vector: boundary))
+                oneMeshVertices.append(SCNVector3(point: boundary))
                 oneMeshNormals.append(normal)
                 oneMeshTextureCoordinates.append(textureCoord)
             }
@@ -123,6 +122,7 @@ extension Hexasphere {
             }
             vertexIndex += tile.boundaries.count
             
+//            tileTexture.setPixel(forTextureCoord: textureCoord, to: initialColour)
             tileTexture.setPixel(forIndex: tileIdx, to: initialColour)
         }
         
@@ -150,10 +150,6 @@ extension Hexasphere {
         
         // Now that we have all the data, populate the various SceneKit structures ahead of creating
         // the geometry.
-        //
-        // Create a mesh of triangles using the indices that map the coordinates of each triangle to vertices
-        //
-        let oneMeshElement = SCNGeometryElement(indices: indices, primitiveType: .triangles)
         
         // Create a source specifying the normal of each vertex.
         let oneMeshNormalSource = SCNGeometrySource(normals: normals)
@@ -165,7 +161,12 @@ extension Hexasphere {
         // each vertex.
         let textureMappingSource = SCNGeometrySource(textureCoordinates: textureCoordinates)
         
-        // Create the geometry, at last.
-        return SCNGeometry(sources: [oneMeshVerticeSource, oneMeshNormalSource, textureMappingSource], elements: [oneMeshElement])
+        return SCNGeometry(sources: [oneMeshVerticeSource,
+                                     oneMeshNormalSource,
+                                     textureMappingSource],
+                           
+                           // Create a mesh of triangles using the indices that map the coordinates of
+                           // each triangle to vertices
+                           elements: [SCNGeometryElement(indices: indices, primitiveType: .triangles)])
     }
 }

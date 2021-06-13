@@ -13,37 +13,39 @@ import KDTree
 
 struct _Tile {
 
-    let centre: Vector
-    var boundaries: [Vector]
+    let centre: Point
+    var boundaries: [Point]
     let coordinate: CLLocationCoordinate2D
     
-    init(centre: Point, sphereRadius: Double, hexSize: Double) {
+    init(centre: Point, faceRegistry: CentreRegistry, sphereRadius: Double, hexSize: Double) {
         
-        self.init(centre: centre.v,
-                  facesInAdjacencyOrder: Face.sortedInAdjacencyOrder(centre.faces),
+        self.init(centre: centre,
+                  facesInAdjacencyOrder: faceRegistry.facesInAdjacencyOrder(forCentre: centre),
                   sphereRadius: sphereRadius,
                   hexSize: hexSize)
     }
 
-    init(centre c: Vector,
+    init(centre c: Point,
          facesInAdjacencyOrder faces: [Face],
          sphereRadius: Double,
          hexSize: Double) {
         
-        func segment(centroid: Vector, to point: Vector, percent: Double) -> Vector {
+        func segment(centroid: Point, to point: Point, percent: Double) -> Point {
             
             let d = 1.0 - percent
-            return Vector(x: point.x * d + centroid.x * percent,
+            return Point(x: point.x * d + centroid.x * percent,
                           y: point.y * d + centroid.y * percent,
                           z: point.z * d + centroid.z * percent)
         }
         
-        centre = c
+        centre = c.project(toRadius: sphereRadius)
         coordinate = _Tile.getCoordinate(forRadius: sphereRadius, at: centre)
-        boundaries = faces.map { segment(centroid: $0.centroid, to: c, percent: .maximum(0.01, .minimum(1.0, hexSize))) }
+        boundaries = faces.map {
+            return segment(centroid: $0.project(toRadius: sphereRadius).centroid, to: c, percent: .maximum(0.01, .minimum(1.0, hexSize)))
+        }
     }
     
-    static func getCoordinate(forRadius radius: Double, at v: Vector) -> CLLocationCoordinate2D {
+    static func getCoordinate(forRadius radius: Double, at v: Point) -> CLLocationCoordinate2D {
         let phi: Double = .acos(v.y / radius) //lat
         let theta: Double = (.atan2(y:v.x, x:v.z) + .pi).truncatingRemainder(dividingBy: .pi * 2.0) - .pi // lon
         
@@ -96,8 +98,8 @@ extension IndexedTile : KDTreePoint {
 public struct Tile {
     public typealias TileIndex = Int
     
-    public let centre: Vector
-    public let boundaries: [Vector]
+    public let centre: Point
+    public let boundaries: [Point]
     public let coordinate: CLLocationCoordinate2D
     public let neighbors: [TileIndex]
     

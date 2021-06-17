@@ -49,26 +49,33 @@ class ImageGeoData: GeoData {
     }
 }
 
-public struct TileInfo: CellInfo {
-    let cellID: Int
-    let neighbors: [Int]
-}
-
-public struct TileInfoIterator: IteratorProtocol {
-    var tileIterator: EnumeratedSequence<[Tile]>.Iterator
-
-    public mutating func next() -> TileInfo? {
-        guard let nextTileTuple = tileIterator.next() else {
-            return nil
-        }
-        return TileInfo(cellID: nextTileTuple.offset, neighbors: nextTileTuple.element.neighbors)
-    }
-}
 
 extension Hexasphere: CellInfoSource {
     
+    public struct TileInfoIterator: IteratorProtocol {
+        
+        typealias NeighborFunc = (Int)->Set<Int>
+        public struct TileInfo: CellInfo {
+            let cellID: Int
+            let neighbors: Set<Int>
+        }
+
+        var tileIterator: EnumeratedSequence<TileSet>.Iterator
+        let neighborFunc: NeighborFunc
+
+        public mutating func next() -> TileInfo? {
+            guard let nextTileTuple = tileIterator.next() else {
+                return nil
+            }
+            return TileInfo(cellID: nextTileTuple.offset, neighbors: neighborFunc(nextTileTuple.offset))
+        }
+    }
+
+
     public func makeIterator() -> TileInfoIterator {
-        return TileInfoIterator(tileIterator: self.tiles.enumerated().makeIterator())
+        return TileInfoIterator(tileIterator: self.tiles.enumerated().makeIterator(), neighborFunc: { tileID in
+            return self.tileNeighbors[tileID] ?? Set<Int>()
+        })
     }
 }
 
@@ -134,7 +141,7 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
             var initialGameState: LifeGameState<Hexasphere>? = nil
             do {
                 let earth = try Hexasphere(radius: HexaGlobeApp.GLOBE_RADIUS,
-                                           numDivisions: 288,
+                                           numDivisions: 64,
                                            hexSize: 1.0) { [weak self] msg in
                     
                     // Update the status window with informative messages as the globe creation process proceeds.
@@ -184,12 +191,12 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
                 }
                 node.applyGameState(gameState)
 
-//                self.cancellable = Timer.publish(every: 0.3, on: .main, in: .common)
-//                    .autoconnect()
-//                    .sink() { _ in
-//                        gameState = gameState.nextState()
-//                        node.applyGameState(gameState)
-//                }
+                self.cancellable = Timer.publish(every: 0.3, on: .main, in: .common)
+                    .autoconnect()
+                    .sink() { _ in
+                        gameState = gameState.nextState()
+                        node.applyGameState(gameState)
+                }
 
             }
         }

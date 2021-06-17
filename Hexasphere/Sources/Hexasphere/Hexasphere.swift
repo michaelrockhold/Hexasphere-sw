@@ -1,6 +1,7 @@
 import Foundation
 import MapKit
 import KDTree
+import Collections
 
 public protocol GeoData {
     var pixelsWide: Int { get }
@@ -9,6 +10,9 @@ public protocol GeoData {
 }
 
 public typealias StatusFn = (String)->(Void)
+
+public typealias TileSet = OrderedSet<Tile>
+public typealias TileNeighborMap = [Tile.TileIndex : Set<Tile.TileIndex>]
 
 extension Face {
     func subdivide(numDivisions: Int,
@@ -55,6 +59,8 @@ public class Hexasphere {
     public let numDivisions: Int
     public let hexSize: Double
     let status: StatusFn
+    public let tiles: TileSet
+    public let tileNeighbors: TileNeighborMap
             
     /// Initialises a Hexasphere
     /// - Parameters:
@@ -74,19 +80,28 @@ public class Hexasphere {
         numDivisions = d
         hexSize = s
         status = sf
-    }
-
-    public lazy var tiles: [Tile] = {
         
         status("Hexasphere building tiles array.")
-        defer {
-            
+        var startTime = Date.timeIntervalSinceReferenceDate
+        tiles = Hexasphere.calculateTiles(radius: radius, numDivisions: numDivisions, hexSize: hexSize, status: status)
+        status("Tile Computation time \(Date.timeIntervalSinceReferenceDate - startTime) for \(numDivisions) divisions yielding \(tiles.count) tiles")
+
+        // Find each tile's immediate neighbors
+        status("Calculating neighborhoods for all \(tiles.count) tiles")
+        startTime = Date.timeIntervalSinceReferenceDate
+        let allTiles = tiles.enumerated().map { IndexedTile(idx: $0.offset, baseTile: $0.element)}
+        let allTilesTree = KDTree(values: allTiles)
+        var workingMap = TileNeighborMap()
+        allTiles.forEach { indexedTile in
+            workingMap[indexedTile.idx] = indexedTile.findNeighborsIndices(population: allTilesTree)
         }
+        tileNeighbors = workingMap
+        status("Tile Neighborhood count time \(Date.timeIntervalSinceReferenceDate - startTime)")
 
-        return calculateTiles(radius: radius, numDivisions: numDivisions, hexSize: hexSize, status: status)
-    }()
+    }
 
-    private func makePoints(numDivisions: Int, status: @escaping StatusFn) -> (Set<Point>, CentreRegistry) {
+    
+    private static func makePoints(numDivisions: Int, status: @escaping StatusFn) -> (Set<Point>, CentreRegistry) {
         
         let PHI = (1.0 + .sqrt(5.0)) / 2.0
         
@@ -155,16 +170,10 @@ public class Hexasphere {
         return (pointSource.points, centersRegistry)
     }
     
-    func calculateTiles(radius: Double, numDivisions: Int, hexSize: Double, status: @escaping StatusFn) -> [Tile] {
-        var tileCount = 0
-        let startBuild = Date.timeIntervalSinceReferenceDate
-        defer {
-            let endBuild = Date.timeIntervalSinceReferenceDate
-            status("Computation time \(endBuild - startBuild) for \(numDivisions) divisions yielding \(tileCount) tiles")
-        }
+    private static func calculateTiles(radius: Double, numDivisions: Int, hexSize: Double, status: @escaping StatusFn) -> TileSet {
         
         guard numDivisions > 0 else {
-            return [Tile]()
+            return TileSet()
         }
         
         // Plot points on the surface of a sphere by starting the pointy bits of 12 pentagons (an isohedron),
@@ -172,18 +181,9 @@ public class Hexasphere {
         let (points, centers) = makePoints(numDivisions: numDivisions, status: status)
         
         // Now we can create a Tile for each point we've plotted
-        let population = points.map {
-            _Tile(centre: $0, faceRegistry:centers, sphereRadius: radius, hexSize: hexSize)
-        }
-        
-        tileCount = population.count
-        // This is as good a time as any to find each tile's immediate neighbors
-        status("Calculating neighborhoods for all \(tileCount) tiles")
-        let allTiles = population.enumerated().map { IndexedTile(idx: $0.offset, baseTile: $0.element)}
-        let allTilesTree = KDTree(values: allTiles)
-        return allTiles.map {
-            return Tile(baseTile: $0.baseTile, neighbors: $0.findNeighborsIndices(population: allTilesTree))
-        }
+        return TileSet(points.map {
+            Tile(centre: $0, faceRegistry:centers, sphereRadius: radius, hexSize: hexSize)
+        })
     }
     
 }

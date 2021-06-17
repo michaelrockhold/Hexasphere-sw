@@ -9,7 +9,7 @@ import Foundation
 
 protocol CellInfo {
     var cellID: Int { get }
-    var neighbors: [Int] { get }
+    var neighbors: Set<Int> { get }
 }
 
 protocol CellInfoSource: Sequence where Element: CellInfo {

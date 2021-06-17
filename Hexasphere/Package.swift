@@ -15,6 +15,7 @@ let package = Package(
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/apple/swift-algorithms", from: "0.2.0"),
         .package(url: "https://github.com/apple/swift-numerics", from: "0.1.0"),
+        .package(url: "https://github.com/apple/swift-collections", from: "0.0.3"),
         .package(url: "https://github.com/Bersaelor/KDTree", from: "1.4.1")
     ],
     targets: [
@@ -25,6 +26,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Algorithms", package: "swift-algorithms"),
                 .product(name: "Numerics", package: "swift-numerics"),
+                .product(name: "Collections", package: "swift-collections"),
                 .product(name: "KDTree", package: "KDTree")
             ]),
         .testTarget(

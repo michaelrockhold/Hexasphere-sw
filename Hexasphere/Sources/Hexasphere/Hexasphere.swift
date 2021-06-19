@@ -14,18 +14,20 @@ public typealias StatusFn = (String)->(Void)
 public typealias TileSet = OrderedSet<Tile>
 public typealias TileNeighborMap = [Tile.TileIndex : Set<Tile.TileIndex>]
 
+public var status: StatusFn = { msg in
+    // do nothing
+}
+
 extension Face {
     func subdivide(numDivisions: Int,
                    faceIndex: Int,
                    points: PointSource,
-                   registry fr: CentreRegistry,
-                   status: StatusFn) {
+                   registry fr: CentreRegistry) {
         
         let startBuildOfFace = Date.timeIntervalSinceReferenceDate
         status("Starting computation of face \(faceIndex+1)")
         defer {
-            let endBuildOfFace = Date.timeIntervalSinceReferenceDate
-            status("Face \(faceIndex+1): computation time \(endBuildOfFace - startBuildOfFace)")
+            status("Face \(faceIndex+1): computation time \(Date.timeIntervalSinceReferenceDate - startBuildOfFace)")
         }
                     
         var bottom = [self.a]
@@ -58,7 +60,6 @@ public class Hexasphere {
     public let radius: Double
     public let numDivisions: Int
     public let hexSize: Double
-    let status: StatusFn
     public let tiles: TileSet
     public let tileNeighbors: TileNeighborMap
             
@@ -69,39 +70,43 @@ public class Hexasphere {
     ///   - hexSize: size of each hex where 1.0 has all hexes touching their * neighbours.
     public init(radius r: Double,
                 numDivisions d: Int,
-                hexSize s: Double,
-                status sf: @escaping StatusFn) throws {
+                hexSize s: Double) throws {
         
         guard d >= 1 else {
             throw HexasphereError.InvalidArgument
         }
-        
+        let startTime = Date.timeIntervalSinceReferenceDate
+        defer {
+            status("Total time to calculate hexagon (\(radius), \(numDivisions), \(hexSize)): \(Date.timeIntervalSinceReferenceDate - startTime)")
+        }
+
         radius = r
         numDivisions = d
         hexSize = s
-        status = sf
         
-        status("Hexasphere building tiles array.")
-        var startTime = Date.timeIntervalSinceReferenceDate
-        tiles = Hexasphere.calculateTiles(radius: radius, numDivisions: numDivisions, hexSize: hexSize, status: status)
-        status("Tile Computation time \(Date.timeIntervalSinceReferenceDate - startTime) for \(numDivisions) divisions yielding \(tiles.count) tiles")
+        tiles = Hexasphere.calculateTiles(radius: radius, numDivisions: numDivisions, hexSize: hexSize)
 
-        // Find each tile's immediate neighbors
-        status("Calculating neighborhoods for all \(tiles.count) tiles")
-        startTime = Date.timeIntervalSinceReferenceDate
-        let allTiles = tiles.enumerated().map { IndexedTile(idx: $0.offset, baseTile: $0.element)}
-        let allTilesTree = KDTree(values: allTiles)
-        var workingMap = TileNeighborMap()
-        allTiles.forEach { indexedTile in
-            workingMap[indexedTile.idx] = indexedTile.findNeighborsIndices(population: allTilesTree)
-        }
-        tileNeighbors = workingMap
-        status("Tile Neighborhood count time \(Date.timeIntervalSinceReferenceDate - startTime)")
-
+        tileNeighbors = Self.findAllNeighbors(for: tiles)
     }
 
+    // Find each tile's immediate neighbors
+    private static func findAllNeighbors(for tiles: TileSet) -> TileNeighborMap {
+        status("Calculating neighborhoods for all \(tiles.count) tiles")
+        let startTime = Date.timeIntervalSinceReferenceDate
+        defer {
+            status("Tile Neighborhood count time \(Date.timeIntervalSinceReferenceDate - startTime)")
+        }
+
+        let indexedTiles = tiles.enumerated().map { IndexedTile(idx: $0.offset, baseTile: $0.element)}
+        let indexedTilesTree = KDTree(values: indexedTiles)
+        var workingMap = TileNeighborMap()
+        indexedTiles.forEach { indexedTile in
+            workingMap[indexedTile.idx] = indexedTile.findNeighborsIndices(population: indexedTilesTree)
+        }
+        return workingMap
+    }
     
-    private static func makePoints(numDivisions: Int, status: @escaping StatusFn) -> (Set<Point>, CentreRegistry) {
+    private static func makePoints(numDivisions: Int) -> (Set<Point>, CentreRegistry) {
         
         let PHI = (1.0 + .sqrt(5.0)) / 2.0
         
@@ -164,21 +169,27 @@ public class Hexasphere {
         let centersRegistry = CentreRegistry()
         
         for (fidx, face) in faces.enumerated() {
-            face.subdivide(numDivisions: numDivisions, faceIndex: fidx, points: pointSource, registry: centersRegistry, status: status)
+            face.subdivide(numDivisions: numDivisions, faceIndex: fidx, points: pointSource, registry: centersRegistry)
         }
         
         return (pointSource.points, centersRegistry)
     }
     
-    private static func calculateTiles(radius: Double, numDivisions: Int, hexSize: Double, status: @escaping StatusFn) -> TileSet {
+    private static func calculateTiles(radius: Double, numDivisions: Int, hexSize: Double) -> TileSet {
         
+        status("Computing tile coordinates...")
+        let startTime = Date.timeIntervalSinceReferenceDate
+        defer {
+            status("Time to compute tiles: \(Date.timeIntervalSinceReferenceDate - startTime) for \(numDivisions) divisions.")
+        }
+
         guard numDivisions > 0 else {
             return TileSet()
         }
         
         // Plot points on the surface of a sphere by starting the pointy bits of 12 pentagons (an isohedron),
         // and then iteratively subdividing the lines between those points
-        let (points, centers) = makePoints(numDivisions: numDivisions, status: status)
+        let (points, centers) = makePoints(numDivisions: numDivisions)
         
         // Now we can create a Tile for each point we've plotted
         return TileSet(points.map {

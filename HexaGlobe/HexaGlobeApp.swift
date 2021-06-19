@@ -140,9 +140,7 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
             let node: Hexasphere.Node
             var initialGameState: LifeGameState<Hexasphere>? = nil
             do {
-                let earth = try Hexasphere(radius: HexaGlobeApp.GLOBE_RADIUS,
-                                           numDivisions: 64,
-                                           hexSize: 1.0) { [weak self] msg in
+                status = { [weak self] msg in
                     
                     // Update the status window with informative messages as the globe creation process proceeds.
                     DispatchQueue.main.async {
@@ -152,6 +150,10 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
                         #endif
                     }
                 }
+                
+                let earth = try Hexasphere(radius: HexaGlobeApp.GLOBE_RADIUS,
+                                           numDivisions: 64,
+                                           hexSize: 1.0)
                 
                 let geoData = ImageGeoData(imageFilename: "equirectangle_projection.png")
 

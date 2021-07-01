@@ -8,15 +8,18 @@
 
 /* Begin PBXBuildFile section */
 		2E14C612263252B1000AEAD6 /* Hexasphere in Frameworks */ = {isa = PBXBuildFile; productRef = 2E14C611263252B1000AEAD6 /* Hexasphere */; };
+		2E3069AC268D80E1003565BB /* Blue_Marble_2002.png in Resources */ = {isa = PBXBuildFile; fileRef = 2E3069AB268D80DF003565BB /* Blue_Marble_2002.png */; };
 		2E35115E26570B5200E56590 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E35115726570B5200E56590 /* ContentView.swift */; };
 		2E35116026570B5200E56590 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2E35115A26570B5200E56590 /* Assets.xcassets */; };
 		2E35116226570B5200E56590 /* HexaGlobeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E35115D26570B5200E56590 /* HexaGlobeApp.swift */; };
 		2E3511682658378300E56590 /* equirectangle_projection.png in Resources */ = {isa = PBXBuildFile; fileRef = 2E3511672658378300E56590 /* equirectangle_projection.png */; };
 		2E7A8B13265D43B800C390E6 /* LifeGameState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7A8B12265D43B800C390E6 /* LifeGameState.swift */; };
+		2EE2DAAF2680081400C19430 /* Gameplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE2DAAE2680081400C19430 /* Gameplay.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2E14C60926324CC4000AEAD6 /* Hexasphere */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Hexasphere; path = ../Hexasphere; sourceTree = "<group>"; };
+		2E3069AB268D80DF003565BB /* Blue_Marble_2002.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Blue_Marble_2002.png; sourceTree = "<group>"; };
 		2E35115726570B5200E56590 /* ContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = SOURCE_ROOT; };
 		2E35115A26570B5200E56590 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = SOURCE_ROOT; };
 		2E35115B26570B5200E56590 /* HexaGlobe.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = HexaGlobe.entitlements; sourceTree = SOURCE_ROOT; };
@@ -25,6 +28,7 @@
 		2E3511672658378300E56590 /* equirectangle_projection.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = equirectangle_projection.png; sourceTree = "<group>"; };
 		2E7A8B12265D43B800C390E6 /* LifeGameState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeGameState.swift; sourceTree = "<group>"; };
 		2E9CC4A926316710009B5F9C /* HexaGlobe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HexaGlobe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2EE2DAAE2680081400C19430 /* Gameplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gameplay.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,9 +57,11 @@
 				2E35115C26570B5200E56590 /* Info.plist */,
 				2E35115A26570B5200E56590 /* Assets.xcassets */,
 				2E35115D26570B5200E56590 /* HexaGlobeApp.swift */,
+				2EE2DAAE2680081400C19430 /* Gameplay.swift */,
 				2E35115726570B5200E56590 /* ContentView.swift */,
 				2E35115B26570B5200E56590 /* HexaGlobe.entitlements */,
 				2E3511672658378300E56590 /* equirectangle_projection.png */,
+				2E3069AB268D80DF003565BB /* Blue_Marble_2002.png */,
 				2E14C60926324CC4000AEAD6 /* Hexasphere */,
 				D0D1A61B1ECC653200171E3B /* Products */,
 				2E14C610263252B1000AEAD6 /* Frameworks */,
@@ -138,6 +144,7 @@
 			files = (
 				2E3511682658378300E56590 /* equirectangle_projection.png in Resources */,
 				2E35116026570B5200E56590 /* Assets.xcassets in Resources */,
+				2E3069AC268D80E1003565BB /* Blue_Marble_2002.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -149,6 +156,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2E7A8B13265D43B800C390E6 /* LifeGameState.swift in Sources */,
+				2EE2DAAF2680081400C19430 /* Gameplay.swift in Sources */,
 				2E35115E26570B5200E56590 /* ContentView.swift in Sources */,
 				2E35116226570B5200E56590 /* HexaGlobeApp.swift in Sources */,
 			);

@@ -12,15 +12,13 @@ protocol CellInfo {
     var neighbors: Set<Int> { get }
 }
 
-protocol CellInfoSource: Sequence where Element: CellInfo {
-    
-}
+protocol CellInfoSource: Collection where Element: CellInfo {}
 
-
-struct LifeGameState<T: CellInfoSource> {
+struct LifeGameState<T: CellInfoSource> where T.Index: Strideable, T.Index.Stride: SignedInteger {
     let cellInfoSource: T
     let liveCellIndices: IndexSet
-    
+    let familyID = UUID().uuidString
+
     func applyRules(_ cellInfo: CellInfo) -> Bool {
         var liveCellCount = liveCellIndices.contains(cellInfo.cellID) ? 1 : 0
         let liveNeighbors = cellInfo.neighbors.filter { liveCellIndices.contains($0) }
@@ -34,15 +32,46 @@ struct LifeGameState<T: CellInfoSource> {
     }
     
     func nextState() -> LifeGameState {
-        var s = IndexSet()
         
-        for cellInfo in cellInfoSource {
-            let newCellState = applyRules(cellInfo)
-            if newCellState {
-                s.insert(cellInfo.cellID)
+        let waitGroup = DispatchGroup()
+        let workQueue = DispatchQueue(label: "LifeGameState.\(familyID).nextState", attributes: .concurrent)
+        let outputQueue = DispatchQueue(label: "LifeGameState.\(familyID).reduce")
+        var result = IndexSet()
+
+        func processOneSegment(_ cells: T.SubSequence) {
+            waitGroup.enter()
+            var s = IndexSet()
+            workQueue.async(qos: .utility) {
+                for cellInfo in cells {
+                    let newCellState = applyRules(cellInfo)
+                    if newCellState {
+                        s.insert(cellInfo.cellID)
+                    }
+                }
+                outputQueue.sync {
+                    result.formUnion(s)
+                }
+                waitGroup.leave()
             }
         }
+
+        let taskCount = Int(Double(cellInfoSource.count).squareRoot().rounded())
+        let segmentSize = cellInfoSource.count / taskCount
+        let extras = cellInfoSource.count % taskCount
         
-        return LifeGameState(cellInfoSource: cellInfoSource, liveCellIndices: s)
+        var first = cellInfoSource.startIndex
+        var last = cellInfoSource.index(first, offsetBy: segmentSize + extras)
+
+        for _ in 0..<taskCount {
+            processOneSegment(cellInfoSource[first..<last])
+            
+            first = last
+            if last < cellInfoSource.endIndex {
+                last = cellInfoSource.index(last, offsetBy: segmentSize)
+            }
+        }
+
+        waitGroup.wait()
+        return LifeGameState(cellInfoSource: cellInfoSource, liveCellIndices: result)
     }
 }

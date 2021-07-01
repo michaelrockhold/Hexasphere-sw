@@ -11,7 +11,7 @@ extension SCNVector3 {
     init(point p: Point) {
         self = SCNVector3Make(CGFloat(p.x), CGFloat(p.y), CGFloat(p.z))
     }
-
+    
     init(glkvector: GLKVector3) {
         self = SCNVector3FromGLKVector3(glkvector)
     }
@@ -59,12 +59,12 @@ extension Hexasphere {
             tileTexture.setPixel(forIndex: tileIndex, to: color)
             oneMeshMaterial.diffuse.contents = tileTexture.tileTextureImage
         }
-
+        
         public func updateTiles(forIndices tileIndices: IndexSet, with color: CGColor) {
             tileTexture.setPixel(forIndices: tileIndices, to: color)
             oneMeshMaterial.diffuse.contents = tileTexture.tileTextureImage
         }
-
+        
         public func updateTileTexture(forTileAt tileIndex: Tile.TileIndex, with colour: CGColor) {
             tileTexture.setPixel(forIndex: tileIndex, to: colour)
         }
@@ -73,7 +73,7 @@ extension Hexasphere {
         }
     }
     
-
+    
     // Now create a SceneKit node from the hexasphere, where all tiles become part of a single node,
     // rather than trying to get SceneKit to render thousands of nodes.
     
@@ -97,6 +97,31 @@ extension Hexasphere {
         var oneMeshNormals = [SCNVector3]()
         var oneMeshVertices = [SCNVector3]()
         var oneMeshTextureCoordinates = [CGPoint]()
+        
+        func createGeometry() -> SCNGeometry {
+            
+            // Once we have all the data, populate the various SceneKit structures ahead of creating
+            // the geometry.
+            
+            // Create a source specifying the normal of each vertex.
+            let oneMeshNormalSource = SCNGeometrySource(normals: oneMeshNormals)
+            
+            // Create a source of the vertices.
+            let oneMeshVerticeSource = SCNGeometrySource(vertices: oneMeshVertices)
+            
+            // Create a texture map that tells SceneKit where in the material to get colour information for
+            // each vertex.
+            let textureMappingSource = SCNGeometrySource(textureCoordinates: oneMeshTextureCoordinates)
+            
+            return SCNGeometry(sources: [oneMeshVerticeSource,
+                                         oneMeshNormalSource,
+                                         textureMappingSource],
+                               
+                               // Create a mesh of triangles using the indices that map the coordinates of
+                               // each triangle to vertices
+                               elements: [SCNGeometryElement(indices: oneMeshIndices, primitiveType: .triangles)])
+        }
+        
         
         var vertexIndex = 0
         
@@ -122,51 +147,19 @@ extension Hexasphere {
             }
             vertexIndex += tile.boundaries.count
             
-//            tileTexture.setPixel(forTextureCoord: textureCoord, to: initialColour)
             tileTexture.setPixel(forIndex: tileIdx, to: initialColour)
         }
         
         status("World tiles: \(tiles.count); vertices: \(vertexIndex); indices: \(oneMeshIndices.count)")
         
-        let geometry = Self.createGeometry(indices: oneMeshIndices,
-                                      normals: oneMeshNormals,
-                                      vertices: oneMeshVertices,
-                                      textureCoordinates: oneMeshTextureCoordinates)
         let material = SCNMaterial()
         material.diffuse.contents = tileTexture.tileTextureImage
         material.isDoubleSided = true
         material.locksAmbientWithDiffuse = true
+        
+        let geometry = createGeometry()
         geometry.materials = [material]
         
         return Node(geometry: geometry, tileTexture: tileTexture, oneMeshMaterial: material, name: name)
-    }
-    
-    private static func createGeometry(
-        indices: [UInt32],
-        normals: [SCNVector3],
-        vertices: [SCNVector3],
-        textureCoordinates: [CGPoint]
-    ) -> SCNGeometry {
-        
-        // Now that we have all the data, populate the various SceneKit structures ahead of creating
-        // the geometry.
-        
-        // Create a source specifying the normal of each vertex.
-        let oneMeshNormalSource = SCNGeometrySource(normals: normals)
-        
-        // Create a source of the vertices.
-        let oneMeshVerticeSource = SCNGeometrySource(vertices: vertices)
-        
-        // Create a texture map that tells SceneKit where in the material to get colour information for
-        // each vertex.
-        let textureMappingSource = SCNGeometrySource(textureCoordinates: textureCoordinates)
-        
-        return SCNGeometry(sources: [oneMeshVerticeSource,
-                                     oneMeshNormalSource,
-                                     textureMappingSource],
-                           
-                           // Create a mesh of triangles using the indices that map the coordinates of
-                           // each triangle to vertices
-                           elements: [SCNGeometryElement(indices: indices, primitiveType: .triangles)])
     }
 }

@@ -91,7 +91,7 @@ extension Hexasphere {
         // We colour each tile individually by using a texture and mapping each tile ID to
         // a coordinate that can be derived from the tile ID.
         // Create the default texture
-        let tileTexture = try MutableTileTexture(tileCount: tileCount)
+        let tileTexture = try MutableTileTexture(tileCount: tileCount, initialColour: initialColour)
         
         var oneMeshIndices = [UInt32]()
         var oneMeshNormals = [SCNVector3]()
@@ -146,8 +146,6 @@ extension Hexasphere {
                 oneMeshIndices.append(UInt32(vertexIndex + i))
             }
             vertexIndex += tile.boundaries.count
-            
-            tileTexture.setPixel(forIndex: tileIdx, to: initialColour)
         }
         
         status("World tiles: \(tiles.count); vertices: \(vertexIndex); indices: \(oneMeshIndices.count)")

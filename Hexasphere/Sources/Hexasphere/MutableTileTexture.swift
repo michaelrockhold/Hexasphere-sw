@@ -18,21 +18,21 @@ class MutableTileTexture {
     let pixelWidth: Int
     let pixelHeight: Int
     
-    init(tileCount: Int) throws {
+    init(tileCount: Int, initialColour: CGColor) throws {
         
         pixelWidth = Int(sqrt(Double(tileCount)).rounded(.up))
         let h = tileCount / pixelWidth
         pixelHeight = h + (tileCount % pixelWidth > 0 ? 1 : 0)
         
-        bitmapData = MutableTileTexture.makeBitmapData(count: MutableTileTexture.bytesPerPixel * pixelWidth * pixelHeight)
-        context = MutableTileTexture.makeContext(data: &bitmapData,
+        bitmapData = Self.makeBitmapData(count: MutableTileTexture.bytesPerPixel * pixelWidth * pixelHeight, initialColour: initialColour)
+        context = Self.makeContext(data: &bitmapData,
                                                  width: pixelWidth,
                                                  height: pixelHeight,
                                                  bytesPerRow: MutableTileTexture.bytesPerPixel * pixelWidth)
     }
     
-    private static func makeBitmapData(count: Int) -> [UInt8] {
-        return [UInt8](repeating: 0xFF, count: count)
+    private static func makeBitmapData(count: Int, initialColour: CGColor) -> [UInt8] {
+        return [UInt8](repeating: 0x00, count: count)
     }
     
     private static func makeContext(data: inout [UInt8], width: Int, height: Int, bytesPerRow: Int) -> CGContext {

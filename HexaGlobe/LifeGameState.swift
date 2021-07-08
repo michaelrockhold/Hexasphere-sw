@@ -15,22 +15,12 @@ protocol CellInfo {
 protocol CellInfoSource: Collection where Element: CellInfo {}
 
 struct LifeGameState<T: CellInfoSource> where T.Index: Strideable, T.Index.Stride: SignedInteger {
+    let generation: Int
     let cellInfoSource: T
     let liveCellIndices: IndexSet
+    let generationRule: (CellInfo, IndexSet) -> Bool
     let familyID = UUID().uuidString
 
-    func applyRules(_ cellInfo: CellInfo) -> Bool {
-        var liveCellCount = liveCellIndices.contains(cellInfo.cellID) ? 1 : 0
-        let liveNeighbors = cellInfo.neighbors.filter { liveCellIndices.contains($0) }
-        liveCellCount += liveNeighbors.count
-        
-        if cellInfo.neighbors.count == 5 { // Pentagon: liveCellCount may range from 0 to 6
-            return liveCellCount > 2 && liveCellCount < 5
-        } else { // Hexagon: liveCellCount may range from 0 to 7
-            return liveCellCount > 2 && liveCellCount < 6
-        }
-    }
-    
     func nextState() -> LifeGameState {
         
         let waitGroup = DispatchGroup()
@@ -43,7 +33,7 @@ struct LifeGameState<T: CellInfoSource> where T.Index: Strideable, T.Index.Strid
             var s = IndexSet()
             workQueue.async(qos: .utility) {
                 for cellInfo in cells {
-                    let newCellState = applyRules(cellInfo)
+                    let newCellState = generationRule(cellInfo, liveCellIndices)
                     if newCellState {
                         s.insert(cellInfo.cellID)
                     }
@@ -72,6 +62,6 @@ struct LifeGameState<T: CellInfoSource> where T.Index: Strideable, T.Index.Strid
         }
 
         waitGroup.wait()
-        return LifeGameState(cellInfoSource: cellInfoSource, liveCellIndices: result)
+        return LifeGameState(generation: generation+1, cellInfoSource: cellInfoSource, liveCellIndices: result, generationRule: self.generationRule)
     }
 }

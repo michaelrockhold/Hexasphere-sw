@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2E11EF3D269389DC00ADDE1F /* WorldGlobeLife.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E11EF3C269389DC00ADDE1F /* WorldGlobeLife.swift */; };
 		2E14C612263252B1000AEAD6 /* Hexasphere in Frameworks */ = {isa = PBXBuildFile; productRef = 2E14C611263252B1000AEAD6 /* Hexasphere */; };
 		2E3069AC268D80E1003565BB /* Blue_Marble_2002.png in Resources */ = {isa = PBXBuildFile; fileRef = 2E3069AB268D80DF003565BB /* Blue_Marble_2002.png */; };
 		2E35115E26570B5200E56590 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E35115726570B5200E56590 /* ContentView.swift */; };
@@ -18,6 +19,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2E11EF3C269389DC00ADDE1F /* WorldGlobeLife.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldGlobeLife.swift; sourceTree = "<group>"; };
 		2E14C60926324CC4000AEAD6 /* Hexasphere */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Hexasphere; path = ../Hexasphere; sourceTree = "<group>"; };
 		2E3069AB268D80DF003565BB /* Blue_Marble_2002.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Blue_Marble_2002.png; sourceTree = "<group>"; };
 		2E35115726570B5200E56590 /* ContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = SOURCE_ROOT; };
@@ -53,6 +55,7 @@
 		D0D1A6111ECC653200171E3B = {
 			isa = PBXGroup;
 			children = (
+				2E11EF3C269389DC00ADDE1F /* WorldGlobeLife.swift */,
 				2E7A8B12265D43B800C390E6 /* LifeGameState.swift */,
 				2E35115C26570B5200E56590 /* Info.plist */,
 				2E35115A26570B5200E56590 /* Assets.xcassets */,
@@ -158,6 +161,7 @@
 				2E7A8B13265D43B800C390E6 /* LifeGameState.swift in Sources */,
 				2EE2DAAF2680081400C19430 /* Gameplay.swift in Sources */,
 				2E35115E26570B5200E56590 /* ContentView.swift in Sources */,
+				2E11EF3D269389DC00ADDE1F /* WorldGlobeLife.swift in Sources */,
 				2E35116226570B5200E56590 /* HexaGlobeApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

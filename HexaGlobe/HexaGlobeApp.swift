@@ -12,7 +12,7 @@ import SwiftUI
 struct HexaGlobeApp: App {
     static let GLOBE_RADIUS: Double = 2.0
     
-    @StateObject var earthCoordinator = SceneCoordinator()
+    @StateObject var earthCoordinator = SceneCoordinator(game: WorldGlobeLife())
     
     var body: some Scene {
         WindowGroup {

@@ -108,7 +108,7 @@ class SceneCoordinator: NSObject, SCNSceneRendererDelegate, ObservableObject {
                 }
                 
                 let earth = try Hexasphere(radius: HexaGlobeApp.GLOBE_RADIUS,
-                                           numDivisions: 10,
+                                           numDivisions: 16, // 262144 (2**18) should give tiles slightly smaller than a 10-lane olympic pool, or the footprint of a single-family home
                                            hexSize: 0.99)
                 
                 let node = try earth.buildNode(name: "Earth",

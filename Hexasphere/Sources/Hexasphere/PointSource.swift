@@ -20,4 +20,10 @@ class PointSource {
         let (_, pp) = points.insert(p)
         return pp
     }
+    
+    func reproject(radius: Double) {
+        for p in points {
+            p.project(toRadius: radius)
+        }
+    }
 }

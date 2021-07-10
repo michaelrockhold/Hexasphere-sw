@@ -12,10 +12,15 @@ func distanceTo(xa: Double, ya: Double, za: Double, xb: Double, yb: Double, zb: 
     return .sqrt(.pow(xb-xa, 2) + .pow(yb-ya, 2) + .pow(zb-za, 2))
 }
 
-public struct Point {
-    let x: Double
-    let y: Double
-    let z: Double
+public class Point {
+    var x: Double
+    var y: Double
+    var z: Double
+    var faces = [Face]()
+    
+    init(x: Double, y: Double, z: Double) {
+        self.x = x; self.y = y; self.z = z
+    }
     
     func hypotenuse() -> Double {
         return .sqrt(x*x + y*y + z*z)
@@ -29,14 +34,16 @@ public struct Point {
         return pow(b.x-x, 2) + pow(b.y-y, 2) + pow(b.z-z, 2)
     }
     
-    func project(toRadius radius: Double) -> Point {
-        return project(toRadius: radius, withPercentage: 1.0)
+    func project(toRadius radius: Double) {
+        project(toRadius: radius, withPercentage: 1.0)
     }
 
-    func project(toRadius radius: Double, withPercentage percent: Double) -> Point {
+    func project(toRadius radius: Double, withPercentage percent: Double) {
         let percent: Double = .maximum(0.0, .minimum(1.0, percent))
         let ratio = radius / hypotenuse()
-        return Point(x: x * ratio * percent, y: y * ratio * percent, z: z * ratio * percent)
+        x = x * ratio * percent
+        y = y * ratio * percent
+        z = z * ratio * percent
     }
     
     func surfaceTangent() -> Point {
@@ -64,6 +71,37 @@ public struct Point {
         
         segment.append(p)
         return segment
+    }
+    
+    func facesInAdjacencyOrder() -> [Face] {
+        
+        var ret = [Face]()
+        
+        guard faces.count > 0 else {
+            return ret
+        }
+
+        var workingArray = faces // copy
+        ret.append(workingArray.removeFirst())
+        while workingArray.count > 0 {
+            var adjacentIdx = -1
+            for (idx,f) in workingArray.enumerated() {
+                if f.isAdjacent(to: ret.last!) {
+                    adjacentIdx = idx
+                    break
+                }
+            }
+            if adjacentIdx < 0 {
+                if workingArray.count == 1 {
+                    ret.append(workingArray.remove(at: 0))
+                } else {
+                    fatalError("error finding adjacent face: nothing in \(workingArray) is adjacent to \(String(describing: ret.last!))") // or we loop forever now
+                }
+            } else {
+                ret.append(workingArray.remove(at: adjacentIdx))
+            }
+        }
+        return ret
     }
 }
 

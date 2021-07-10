@@ -18,19 +18,16 @@ public struct Tile {
     var boundaries: [Point]
     public let coordinate: CLLocationCoordinate2D
     
-    init(centre: Point, faceRegistry: CentreRegistry, sphereRadius: Double, hexSize: Double) {
-        
-        self.init(centre: centre,
-                  facesInAdjacencyOrder: faceRegistry.facesInAdjacencyOrder(forCentre: centre),
-                  sphereRadius: sphereRadius,
-                  hexSize: hexSize)
-    }
-
     init(centre c: Point,
-         facesInAdjacencyOrder faces: [Face],
          sphereRadius: Double,
          hexSize: Double) {
-        
+                
+        centre = c
+        coordinate = Tile.getCoordinate(forRadius: sphereRadius, at: centre)
+        boundaries = Self.makeBoundaries(from: centre, hexSize: hexSize)
+    }
+    
+    static func makeBoundaries(from p: Point, hexSize: Double) -> [Point] {
         func segment(centroid: Point, to point: Point, percent: Double) -> Point {
             
             let d = 1.0 - percent
@@ -38,11 +35,9 @@ public struct Tile {
                           y: point.y * d + centroid.y * percent,
                           z: point.z * d + centroid.z * percent)
         }
-        
-        centre = c.project(toRadius: sphereRadius)
-        coordinate = Tile.getCoordinate(forRadius: sphereRadius, at: centre)
-        boundaries = faces.map {
-            return segment(centroid: $0.project(toRadius: sphereRadius).centroid, to: c, percent: .maximum(0.01, .minimum(1.0, hexSize)))
+
+        return p.facesInAdjacencyOrder().map {
+            return segment(centroid: $0.centroid, to: p, percent: .maximum(0.01, .minimum(1.0, hexSize)))
         }
     }
     

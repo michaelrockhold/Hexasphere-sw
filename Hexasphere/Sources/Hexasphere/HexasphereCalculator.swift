@@ -87,8 +87,7 @@ struct HexasphereCalculator {
     }
     
     private func calculateTileCentres(numDivisions: Int,
-                                      pointSource: PointSource,
-                                      faceRegistry: CentreRegistry) {
+                                      pointSource: PointSource) {
         
         status("Computing all tile centres...")
         let startTime = Date.timeIntervalSinceReferenceDate
@@ -124,40 +123,22 @@ struct HexasphereCalculator {
         // Each of the original twelve points 'participates' in five
         // different faces
         let faces = [
-            (0, 1, 4),
-            (1, 9, 4),
-            (4, 9, 5),
-            (5, 9, 3),
-            (2, 3, 7),
-            
-            (3, 2, 5),
-            (7, 10, 2),
-            (0, 8, 10),
-            (0, 4, 8),
-            (8, 2, 10),
-            
-            (8, 4, 5),
-            (8, 5, 2),
-            (1, 0, 6),
-            (11, 1, 6),
-            (3, 9, 11),
-            
-            (6, 10, 7),
-            (3, 11, 7),
-            (11, 6, 7),
-            (6, 0, 10),
-            (9, 1, 11)
+            (0, 1, 4),  (1, 9, 4),  (4, 9, 5),  (5, 9, 3),  (2, 3, 7),
+            (3, 2, 5),  (7, 10, 2), (0, 8, 10), (0, 4, 8),  (8, 2, 10),
+            (8, 4, 5),  (8, 5, 2),  (1, 0, 6),  (11, 1, 6), (3, 9, 11),
+            (6, 10, 7), (3, 11, 7), (11, 6, 7), (6, 0, 10), (9, 1, 11)
         ].map {
-            return Face(a: initialPoints[$0], b: initialPoints[$1], c: initialPoints[$2])
+            return Face(a: initialPoints[$0], b: initialPoints[$1], c: initialPoints[$2], andRegister: false)
         }
         
         for (fidx, face) in faces.enumerated() {
             subdivide(a: face.a, b: face.b, c: face.c,
                       numDivisions: numDivisions,
                       faceIndex: fidx,
-                      points: pointSource,
-                      registry: faceRegistry)
+                      points: pointSource)
         }
+        
+        pointSource.reproject(radius: radius)
     }
     
     private func subdivide(
@@ -166,8 +147,7 @@ struct HexasphereCalculator {
         c: Point,
         numDivisions: Int,
         faceIndex: Int,
-        points: PointSource,
-        registry fr: CentreRegistry) {
+        points: PointSource) {
         
         let startBuildOfFace = Date.timeIntervalSinceReferenceDate
         status("Starting computation of face \(faceIndex+1)")
@@ -184,10 +164,10 @@ struct HexasphereCalculator {
             bottom = left[i].subdivide(point: right[i], count: i, pointSource: points)
             
             for j in 0..<i {
-                fr.enregister(face: Face(a: prev[j], b: bottom[j], c: bottom[j+1]))
+                _ = Face(a: prev[j], b: bottom[j], c: bottom[j+1])
                 
                 if (j > 0) {
-                    fr.enregister(face: Face(a: prev[j-1], b: prev[j], c: bottom[j]))
+                    _ = Face(a: prev[j-1], b: prev[j], c: bottom[j])
                 }
             }
         }
@@ -199,14 +179,11 @@ struct HexasphereCalculator {
         let workQueue = DispatchQueue(label: "Hexasphere.\(familyID).calculateTiles", attributes: .concurrent)
         var returnValue = TileSet()
         
-        func processOneSegment(_ points: Slice<Set<Point>>, faceRegistry: CentreRegistry, sphereRadius: Double, hexSize: Double) {
+        func processOneSegment(_ points: Slice<Set<Point>>, sphereRadius: Double, hexSize: Double) {
             waitGroup.enter()
             workQueue.async(qos: .utility) {
                 let workingSet = TileSet(points.map {
-                    Tile(centre: $0,
-                         faceRegistry:faceRegistry,
-                         sphereRadius: radius,
-                         hexSize: hexSize)
+                    Tile(centre: $0, sphereRadius: radius, hexSize: hexSize)
                 })
                 reduceQueue.sync {
                     for tile in workingSet {
@@ -230,10 +207,9 @@ struct HexasphereCalculator {
         
         // Plot points on the surface of a sphere by starting the pointy bits of 12 pentagons (an isohedron),
         // and then iteratively subdividing the lines between those points
-        let faceRegistry = CentreRegistry()
         let pointSource = PointSource()
 
-        calculateTileCentres(numDivisions: numDivisions, pointSource: pointSource, faceRegistry: faceRegistry)
+        calculateTileCentres(numDivisions: numDivisions, pointSource: pointSource)
         
         let tileCentres = pointSource.points
         
@@ -247,7 +223,6 @@ struct HexasphereCalculator {
         
         for _ in 0..<taskCount {
             processOneSegment(tileCentres[first..<last],
-                              faceRegistry:faceRegistry,
                               sphereRadius: radius,
                               hexSize: hexSize)
             
@@ -262,34 +237,3 @@ struct HexasphereCalculator {
         return returnValue
     }
 }
-
-//extension Face {
-//    func subdivide(numDivisions: Int,
-//                   faceIndex: Int,
-//                   points: PointSource,
-//                   registry fr: CentreRegistry) {
-//
-//        let startBuildOfFace = Date.timeIntervalSinceReferenceDate
-//        status("Starting computation of face \(faceIndex+1)")
-//        defer {
-//            status("Face \(faceIndex+1): computation time \(Date.timeIntervalSinceReferenceDate - startBuildOfFace)")
-//        }
-//
-//        var bottom = [self.a]
-//        let left = self.a.subdivide(point: self.b, count: numDivisions, pointSource: points)
-//        let right = self.a.subdivide(point: self.c, count: numDivisions, pointSource: points)
-//
-//        for i in 1...numDivisions {
-//            let prev = bottom
-//            bottom = left[i].subdivide(point: right[i], count: i, pointSource: points)
-//
-//            for j in 0..<i {
-//                fr.enregister(face: Face(a: prev[j], b: bottom[j], c: bottom[j+1]))
-//
-//                if (j > 0) {
-//                    fr.enregister(face: Face(a: prev[j-1], b: prev[j], c: bottom[j]))
-//                }
-//            }
-//        }
-//    }
-//}

@@ -122,7 +122,6 @@ extension Hexasphere {
                                elements: [SCNGeometryElement(indices: oneMeshIndices, primitiveType: .triangles)])
         }
         
-        
         var vertexIndex = 0
         
         for (tileIdx, tile) in tiles.enumerated() {
